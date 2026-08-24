@@ -143,6 +143,25 @@ public class ForgeConfigHandler {
 		@Config.Name("Fix Biomes O Plenty Door Duplication")
 		@Config.Comment("Prevents Biomes O Plenty doors from dropping twice when broken")
 		public boolean fixBOPDoorDupe = true;
+
+		@Config.Comment({
+				"Attaches BiomeDictionary tags to specific biomes.",
+				"Format: <biome_id>=<tag>",
+				"Example: palebloom:pale_garden=Pale",
+				"Add multiple lines targeting the same biome to attach more than one tag to it."
+		})
+		@Config.Name("BiomeDictionary Tag List")
+		public String[] biomeDictionaryTagList = new String[] {
+				"nuclearcraft:nuclear_wasteland=NUCLEAR"
+		};
+
+		@Config.Comment({
+				"Stops Lycanites Mobs' fluid lake generation (ooze/poison/acid/moglava lakes) from generating in biomes carrying any of these BiomeDictionary tags.",
+				"One tag per line.",
+				"Example: NUCLEAR"
+		})
+		@Config.Name("Lycanites Mobs Fluid Lake Disabled Biome Tags")
+		public String[] lycanitesGenerationDisabledBiomeTags = new String[0];
 	}
 
 	public static class ClientConfig {

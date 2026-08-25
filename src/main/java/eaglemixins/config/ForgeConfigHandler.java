@@ -162,6 +162,14 @@ public class ForgeConfigHandler {
 		})
 		@Config.Name("Lycanites Mobs Fluid Lake Disabled Biome Tags")
 		public String[] lycanitesGenerationDisabledBiomeTags = new String[0];
+
+		@Config.Comment({
+				"Stops Ice and Fire's Pixie Village structure from generating in biomes carrying any of these BiomeDictionary tags.",
+				"One tag per line.",
+				"Example: NUCLEAR"
+		})
+		@Config.Name("Pixie Village Disabled Biome Tags")
+		public String[] pixieVillageDisabledBiomeTags = new String[0];
 	}
 
 	public static class ClientConfig {

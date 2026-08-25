@@ -16,6 +16,15 @@ public class EagleMixinsPlugin implements IFMLLoadingPlugin {
 		// Temporary FUR 1.4.2 fixes because we are not using 1.5.0+
 		FermiumRegistryAPI.enqueueMixin(true, "mixins.eaglemixins.furold.json", () -> Loader.isModLoaded("mod_lavacow") && Loader.instance().getIndexedModList().get("mod_lavacow").getVersion().equals("1.4.2"));
 
+		// Biome tag based worldgen blacklists (these were never enqueued, so the config options had no effect)
+		FermiumRegistryAPI.enqueueMixin(true, "mixins.eaglemixins.iceandfire.pixievillageblacklist.json", () -> {
+			boolean loaded = Loader.isModLoaded("iceandfire");
+			EagleMixins.LOGGER.info("[EagleMixins DEBUG] iceandfire loaded={}, pixievillageblacklist mixin config {}",
+					loaded, loaded ? "enqueued" : "NOT enqueued");
+			return loaded;
+		});
+		FermiumRegistryAPI.enqueueMixin(true, "mixins.eaglemixins.lycanitesmobs.disablegeneration.json", () -> Loader.isModLoaded("lycanitesmobs"));
+
 		//Debug stuff
 		FermiumRegistryAPI.enqueueMixin(false, "mixins.eaglemixins.debug.vanilla.json", EagleMixins.debugEnabled);
 		FermiumRegistryAPI.enqueueMixin(true, "mixins.eaglemixins.debug.otg.json", () -> EagleMixins.debugEnabled && Loader.isModLoaded("openterraingenerator"));

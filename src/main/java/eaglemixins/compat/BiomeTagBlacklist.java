@@ -1,6 +1,5 @@
 package eaglemixins.compat;
 
-import eaglemixins.EagleMixins;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
@@ -23,9 +22,6 @@ public class BiomeTagBlacklist {
                 return true;
             }
         }
-
-        EagleMixins.LOGGER.info("[EagleMixins DEBUG] Biome {} at chunk {},{} did not match any configured tag {} - its actual tags are {}",
-                biome.getRegistryName(), chunkX, chunkZ, java.util.Arrays.toString(tags), java.util.Arrays.toString(BiomeDictionary.getTypes(biome).toArray()));
         return false;
     }
 }

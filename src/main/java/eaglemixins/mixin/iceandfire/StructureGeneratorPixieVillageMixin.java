@@ -2,7 +2,6 @@ package eaglemixins.mixin.iceandfire;
 
 import com.github.alexthe666.iceandfire.event.StructureGenerator;
 import com.github.alexthe666.iceandfire.world.village.MapGenPixieVillage;
-import eaglemixins.EagleMixins;
 import eaglemixins.compat.BiomeTagBlacklist;
 import eaglemixins.config.ForgeConfigHandler;
 import net.minecraft.util.math.BlockPos;
@@ -14,10 +13,10 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import java.util.Random;
 
 /**
- * MapGenPixieVillage#canSpawnStructureAtCoords (targeted by MapGenPixieVillageMixin) is dead code -
- * IceAndFire's StructureGenerator#generate calls MapGenPixieVillage#generate directly after its own
- * biome dictionary check (FOREST && (SPOOKY || MAGICAL)), bypassing it entirely. Redirect that call
- * instead so the biome tag blacklist actually has an effect.
+ * MapGenPixieVillage#canSpawnStructureAtCoords is dead code - IceAndFire's StructureGenerator#generate
+ * calls MapGenPixieVillage#generate directly after its own biome dictionary check
+ * (FOREST && (SPOOKY || MAGICAL)), bypassing it entirely. Redirect that call instead so the biome tag
+ * blacklist actually has an effect.
  */
 @Mixin(value = StructureGenerator.class, remap = false)
 public class StructureGeneratorPixieVillageMixin {
@@ -33,11 +32,7 @@ public class StructureGeneratorPixieVillageMixin {
     private boolean eagleMixins$maybeGeneratePixieVillage(MapGenPixieVillage instance, World world, Random rand, BlockPos pos) {
         int chunkX = pos.getX() >> 4;
         int chunkZ = pos.getZ() >> 4;
-        boolean blacklisted = BiomeTagBlacklist.isChunkBiomeBlacklisted(world, chunkX, chunkZ, ForgeConfigHandler.server.pixieVillageDisabledBiomeTags);
-        EagleMixins.LOGGER.info("[EagleMixins DEBUG] Pixie village redirect fired at chunk {},{} biome={} blacklisted={} tags={}",
-                chunkX, chunkZ, world.getBiome(pos).getRegistryName(), blacklisted,
-                java.util.Arrays.toString(ForgeConfigHandler.server.pixieVillageDisabledBiomeTags));
-        if (blacklisted) {
+        if (BiomeTagBlacklist.isChunkBiomeBlacklisted(world, chunkX, chunkZ, ForgeConfigHandler.server.pixieVillageDisabledBiomeTags)) {
             return false;
         }
         return instance.generate(world, rand, pos);

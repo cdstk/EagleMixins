@@ -1,0 +1,186 @@
+package eaglemixins.config.folders;
+
+import eaglemixins.EagleMixins;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraftforge.common.config.Config;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class WeaponDamageConfig {
+
+    @Config.Comment({
+            "Multiply the damage of a critical hit (the vanilla jump-crit) when it is dealt with one of the listed weapons.",
+            "Only applies to player melee attacks and only when the hit actually crits.",
+            "Syntax: modid:name@meta, before|after, multiplier",
+            "  modid:name@meta - the weapon. \"@meta\" is optional; leave it off (or use @*) to match any metadata.",
+            "  before|after    - \"before\": multiplier is folded into the crit step, so damage = base * multiplier * 1.5 (+ enchant bonus, unscaled).",
+            "                    \"after\":  multiplier is applied to the fully resolved hit, so damage = (base * 1.5 + enchant bonus) * multiplier.",
+            "  multiplier      - decimal factor, e.g. 1.05",
+            "Example: srparasites:weapon_axe, after, 1.05",
+            "Example: srparasites:weapon_axe_sentient, after, 1.05"
+    })
+    @Config.Name("Critical Hit Multipliers")
+    public String[] critMultipliers = {
+            "srparasites:weapon_axe, after, 1.05",
+            "srparasites:weapon_axe_sentient, after, 1.05"
+    };
+
+    @Config.Comment({
+            "Multiply the damage of every hit dealt with one of the listed weapons based on the distance to the target.",
+            "Only applies to player melee attacks. Meant for long-reach weapons like a lance.",
+            "Syntax: modid:name@meta, dynamic|set_amount, dynamic_cap, multiplier, base",
+            "  modid:name@meta   - the weapon. \"@meta\" is optional; leave it off (or use @*) to match any metadata.",
+            "  dynamic|set_amount - \"dynamic\": amount = min(distance in blocks between attacker and target, dynamic_cap).",
+            "                       \"set_amount\": amount = dynamic_cap, a flat value that ignores the actual distance.",
+            "  dynamic_cap       - decimal. In dynamic mode it caps how many blocks of distance count; in set_amount mode it IS the amount.",
+            "  multiplier        - decimal factor, e.g. 1.35",
+            "  base              - decimal, normally 1.0. Final multiplier = (multiplier - base) * amount + base.",
+            "                      e.g. multiplier 1.35, base 1.0, amount 4 -> (0.35 * 4) + 1.0 = 2.4",
+            "Example: srparasites:weapon_lance, dynamic, 4, 1.35, 1.0",
+            "Example: srparasites:weapon_lance_sentient, dynamic, 4, 1.35, 1.0"
+    })
+    @Config.Name("Range Multipliers")
+    public String[] rangeMultipliers = {
+            "srparasites:weapon_lance, dynamic, 4, 1.35, 1.0",
+            "srparasites:weapon_lance_sentient, dynamic, 4, 1.35, 1.0"
+    };
+
+    public static final class CritEntry {
+        public final boolean afterCrit;
+        public final float multiplier;
+
+        CritEntry(boolean afterCrit, float multiplier) {
+            this.afterCrit = afterCrit;
+            this.multiplier = multiplier;
+        }
+    }
+
+    public static final class RangeEntry {
+        public final boolean dynamic;
+        public final float cap;
+        public final float multiplier;
+        public final float base;
+
+        RangeEntry(boolean dynamic, float cap, float multiplier, float base) {
+            this.dynamic = dynamic;
+            this.cap = cap;
+            this.multiplier = multiplier;
+            this.base = base;
+        }
+
+        public float compute(float distance) {
+            float amount = dynamic ? Math.min(distance, cap) : cap;
+            return (multiplier - base) * amount + base;
+        }
+    }
+
+    //Map<Item, Map<Metadata, Entry>>, metadata -1 means "any metadata"
+    private final Map<Item, Map<Integer, CritEntry>> critMap = new HashMap<>();
+    private final Map<Item, Map<Integer, RangeEntry>> rangeMap = new HashMap<>();
+    private boolean critParsed = false;
+    private boolean rangeParsed = false;
+
+    public CritEntry getCritEntry(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return null;
+        if (!critParsed) parseCrit();
+        Map<Integer, CritEntry> byMeta = critMap.get(stack.getItem());
+        if (byMeta == null) return null;
+        CritEntry exact = byMeta.get(stack.getMetadata());
+        return exact != null ? exact : byMeta.get(-1);
+    }
+
+    public RangeEntry getRangeEntry(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return null;
+        if (!rangeParsed) parseRange();
+        Map<Integer, RangeEntry> byMeta = rangeMap.get(stack.getItem());
+        if (byMeta == null) return null;
+        RangeEntry exact = byMeta.get(stack.getMetadata());
+        return exact != null ? exact : byMeta.get(-1);
+    }
+
+    private void parseCrit() {
+        critParsed = true;
+        for (String raw : critMultipliers) {
+            String[] split = raw.split(",");
+            if (split.length < 3) {
+                EagleMixins.LOGGER.error("Failed parsing critical hit multiplier ({}) - expected 3 comma-separated fields", raw);
+                continue;
+            }
+            try {
+                Item item = parseItem(split[0]);
+                int meta = parseMeta(split[0]);
+                if (item == null) {
+                    EagleMixins.LOGGER.error("Failed parsing critical hit multiplier ({}) - unknown item", raw);
+                    continue;
+                }
+                boolean afterCrit = parseAfterCrit(split[1].trim());
+                float multiplier = Float.parseFloat(split[2].trim());
+                critMap.computeIfAbsent(item, k -> new HashMap<>()).put(meta, new CritEntry(afterCrit, multiplier));
+            } catch (Exception e) {
+                EagleMixins.LOGGER.error("Failed parsing critical hit multiplier ({})", raw);
+            }
+        }
+    }
+
+    private void parseRange() {
+        rangeParsed = true;
+        for (String raw : rangeMultipliers) {
+            String[] split = raw.split(",");
+            if (split.length < 5) {
+                EagleMixins.LOGGER.error("Failed parsing range multiplier ({}) - expected 5 comma-separated fields", raw);
+                continue;
+            }
+            try {
+                Item item = parseItem(split[0]);
+                int meta = parseMeta(split[0]);
+                if (item == null) {
+                    EagleMixins.LOGGER.error("Failed parsing range multiplier ({}) - unknown item", raw);
+                    continue;
+                }
+                boolean dynamic = parseDynamic(split[1].trim());
+                float cap = Float.parseFloat(split[2].trim());
+                float multiplier = Float.parseFloat(split[3].trim());
+                float base = Float.parseFloat(split[4].trim());
+                rangeMap.computeIfAbsent(item, k -> new HashMap<>()).put(meta, new RangeEntry(dynamic, cap, multiplier, base));
+            } catch (Exception e) {
+                EagleMixins.LOGGER.error("Failed parsing range multiplier ({})", raw);
+            }
+        }
+    }
+
+    private static Item parseItem(String itemSpec) {
+        String id = itemSpec.trim();
+        int at = id.indexOf('@');
+        if (at >= 0) id = id.substring(0, at).trim();
+        return Item.getByNameOrId(id);
+    }
+
+    private static int parseMeta(String itemSpec) {
+        int at = itemSpec.indexOf('@');
+        if (at < 0) return -1;
+        String meta = itemSpec.substring(at + 1).trim();
+        if (meta.isEmpty() || meta.equals("*")) return -1;
+        return Integer.parseInt(meta);
+    }
+
+    private static boolean parseAfterCrit(String mode) {
+        if (mode.equalsIgnoreCase("after")) return true;
+        if (mode.equalsIgnoreCase("before")) return false;
+        throw new IllegalArgumentException("expected 'before' or 'after', got '" + mode + "'");
+    }
+
+    private static boolean parseDynamic(String mode) {
+        if (mode.equalsIgnoreCase("dynamic")) return true;
+        if (mode.equalsIgnoreCase("set_amount")) return false;
+        throw new IllegalArgumentException("expected 'dynamic' or 'set_amount', got '" + mode + "'");
+    }
+
+    public void reset() {
+        critMap.clear();
+        rangeMap.clear();
+        critParsed = false;
+        rangeParsed = false;
+    }
+}

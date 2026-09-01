@@ -68,6 +68,10 @@ public class ForgeConfigHandler {
 	@Config.Name("Teleporter")
 	public static TeleporterConfig teleporter = new TeleporterConfig();
 
+	@Config.Comment("Per-weapon critical-hit and range damage multipliers")
+	@Config.Name("Weapon Damage Modifiers")
+	public static WeaponDamageConfig weapondamage = new WeaponDamageConfig();
+
 	public static class ServerConfig {
 		@Config.Comment("Add Blocks you can drink from, will be treated like water blocks")
 		@Config.Name("Additional Water Blocks:")
@@ -234,6 +238,7 @@ public class ForgeConfigHandler {
 				abyssal.reset();
 				mobequipment.reset();
 				teleporter.reset();
+				weapondamage.reset();
 				refreshDrinkableBlockCache();
 				loadParticleRulesFromConfig();
 			}

@@ -28,18 +28,18 @@ public class WeaponDamageConfig {
     };
 
     @Config.Comment({
-            "Multiply the damage of every hit dealt with one of the listed weapons based on the distance to the target.",
+            "Multiply the damage of a hit with one of the listed weapons based on how far away the target is.",
             "Only applies to player melee attacks. Meant for long-reach weapons like a lance.",
-            "Syntax: modid:name@meta, dynamic|set_amount, dynamic_cap, multiplier, base",
-            "  modid:name@meta   - the weapon. \"@meta\" is optional; leave it off (or use @*) to match any metadata.",
-            "  dynamic|set_amount - \"dynamic\": amount = min(distance in blocks between attacker and target, dynamic_cap).",
-            "                       \"set_amount\": amount = dynamic_cap, a flat value that ignores the actual distance.",
-            "  dynamic_cap       - decimal. In dynamic mode it caps how many blocks of distance count; in set_amount mode it IS the amount.",
-            "  multiplier        - decimal factor, e.g. 1.35",
-            "  base              - decimal, normally 1.0. Final multiplier = (multiplier - base) * amount + base.",
-            "                      e.g. multiplier 1.35, base 1.0, amount 4 -> (0.35 * 4) + 1.0 = 2.4",
+            "Syntax: modid:name@meta, dynamic|set_amount, min_distance, multiplier, base",
+            "  modid:name@meta    - the weapon. \"@meta\" is optional; leave it off (or use @*) to match any metadata.",
+            "  dynamic|set_amount - hits closer than min_distance always deal normal damage. At or beyond min_distance:",
+            "                       \"dynamic\":    the bonus scales with the exact distance (the weapon's reach caps the top).",
+            "                       \"set_amount\": a flat bonus using min_distance as the amount (no scaling with distance).",
+            "  min_distance       - blocks; the activation floor, and the flat amount used by set_amount.",
+            "  multiplier, base   - final multiplier = (multiplier - base) * amount + base. base is normally 1.0.",
+            "                       e.g. multiplier 1.35, base 1.0, amount 4 -> (0.35 * 4) + 1.0 = 2.4",
             "Example: srparasites:weapon_lance, dynamic, 4, 1.35, 1.0",
-            "Example: srparasites:weapon_lance_sentient, dynamic, 4, 1.35, 1.0"
+            "Example: srparasites:weapon_lance_sentient, set_amount, 4, 1.35, 1.0"
     })
     @Config.Name("Range Multipliers")
     public String[] rangeMultipliers = {
@@ -70,19 +70,21 @@ public class WeaponDamageConfig {
 
     public static final class RangeEntry {
         public final boolean dynamic;
-        public final float cap;
+        public final float minDistance;
         public final float multiplier;
         public final float base;
 
-        RangeEntry(boolean dynamic, float cap, float multiplier, float base) {
+        RangeEntry(boolean dynamic, float minDistance, float multiplier, float base) {
             this.dynamic = dynamic;
-            this.cap = cap;
+            this.minDistance = minDistance;
             this.multiplier = multiplier;
             this.base = base;
         }
 
+        /** Damage multiplier for a hit at {@code distance} blocks; 1.0 means no change. */
         public float compute(float distance) {
-            float amount = dynamic ? Math.min(distance, cap) : cap;
+            if (distance < minDistance) return 1.0F;          // below the floor: normal damage
+            float amount = dynamic ? distance : minDistance;  // dynamic scales; set_amount is flat
             return (multiplier - base) * amount + base;
         }
     }
@@ -151,10 +153,10 @@ public class WeaponDamageConfig {
                     continue;
                 }
                 boolean dynamic = parseDynamic(split[1].trim());
-                float cap = Float.parseFloat(split[2].trim());
+                float minDistance = Float.parseFloat(split[2].trim());
                 float multiplier = Float.parseFloat(split[3].trim());
                 float base = Float.parseFloat(split[4].trim());
-                rangeMap.computeIfAbsent(item, k -> new HashMap<>()).put(meta, new RangeEntry(dynamic, cap, multiplier, base));
+                rangeMap.computeIfAbsent(item, k -> new HashMap<>()).put(meta, new RangeEntry(dynamic, minDistance, multiplier, base));
             } catch (Exception e) {
                 EagleMixins.LOGGER.error("Failed parsing range multiplier ({})", raw);
             }
